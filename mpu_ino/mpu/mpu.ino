@@ -8,6 +8,9 @@ float gyroAngleX,gyroAngleY,accAngleX,accAngleY;
 float yaw,pitch,roll;
 float passTime, currTime, prevTime;
 int err = 0;
+int Xt,Yt;
+int Xa=0,Ya=0;
+float theta,sudut;
 
 void setup() {
   // put your setup code here, to run once:
@@ -19,14 +22,54 @@ void setup() {
   Wire.endTransmission(true);
   error();
   delay(100);
-
+  Serial.println("Masukkan tujuan: ");
+  Serial.println();
+  Xt=1;
+  Yt=1;
 }
 
 void loop() {
   
   // put your main code here, to run repeatedly:
- 
-  
+      if(Serial.available()){
+      String inString = "";
+      String strArr[5];
+      while (Serial.available()) {
+        delay(2);
+        char ch = Serial.read();
+        inString+= ch;
+      }
+      int stringStart = 0;
+      int arrayIndex = 0;
+      for (int i=0; i < inString.length(); i++){
+      
+        if(inString.charAt(i) == ' ' ||inString.charAt(i) == '\n' ){
+          strArr[arrayIndex] = "";
+          strArr[arrayIndex] = inString.substring(stringStart, i);
+          stringStart = (i+1);
+          arrayIndex++;
+          
+        }
+      }
+      
+      String value1 = strArr[0];
+      String value2 = strArr[1];
+      
+      Xt = value1.toInt();
+      Yt = value2.toInt();
+      
+        
+    }
+      float    z = readraw();
+      sudut = tujuan(z,Xt,Yt);
+      Serial.print("Alpha : ");
+      Serial.print(z);
+      Serial.print("|sudut : ");
+      Serial.print("|X,Y : "+String(Xt)+","+String(Yt)+" | ");
+      Serial.println(sudut);
+}
+
+float readraw(){
   Wire.beginTransmission(addr);
   Wire.write(0x3B); //address acc
   Wire.endTransmission(false);
@@ -35,8 +78,8 @@ void loop() {
   accBeta=(Wire.read()<<8|Wire.read())/16384.0;
   accRho=(Wire.read()<<8|Wire.read())/16384.0;
 
-  accAngleX = (atan(accBeta/sqrt(pow(accAlpha,2)+pow(accRho,2)))*180/3.14)-accErrAlpha;
-  accAngleY = (atan(-1*accAlpha/sqrt(pow(accBeta,2)+pow(accRho,2)))*180/3.14)-accErrAlpha;
+  accAngleX = (atan(accBeta/sqrt(pow(accAlpha,2)+pow(accRho,2)))*180/3.14159)-accErrAlpha;
+  accAngleY = (atan(-1*accAlpha/sqrt(pow(accBeta,2)+pow(accRho,2)))*180/3.14159)-accErrAlpha;
   
   Wire.beginTransmission(addr);
   Wire.write(0x43); //address gyro
@@ -57,17 +100,10 @@ void loop() {
   gyroAngleX=gyroAngleX+gyroAlpha*passTime;
   gyroAngleY=gyroAngleY+gyroBeta*passTime;
   yaw=yaw+gyroRho*passTime;
-  roll = (0.98 * gyroAngleX)+(0.02*accAngleX);
-  pitch = (0.98 * gyroAngleY)+(0.02*accAngleY);
-
-  Serial.print("Alpha : ");
-  Serial.print(yaw);
-  Serial.print("|Beta : ");
-  Serial.print(roll);
-  Serial.print("|Rho : ");
-  Serial.println(pitch);
+  roll = (0.96 * gyroAngleX)+(0.04*accAngleX);
+  pitch = (0.96 * gyroAngleY)+(0.04*accAngleY);
+  return yaw;
   
-
 }
 
 void error(){
@@ -80,8 +116,8 @@ void error(){
     accBeta=(Wire.read()<<8|Wire.read())/16384.0;
     accRho=(Wire.read()<<8|Wire.read())/16384.0;
   
-    accErrAlpha += ((atan(accBeta/sqrt(pow(accAlpha,2)+pow(accRho,2)))*180/3.14));
-    accErrBeta += ((atan(-1*accAlpha/sqrt(pow(accBeta,2)+pow(accRho,2)))*180/3.14));
+    accErrAlpha += ((atan(accBeta/sqrt(pow(accAlpha,2)+pow(accRho,2)))*180/3.14159));
+    accErrBeta += ((atan(-1*accAlpha/sqrt(pow(accBeta,2)+pow(accRho,2)))*180/3.14159));
 
     err++;
   }
@@ -108,16 +144,13 @@ void error(){
     gyroErrRho = gyroErrBeta / 200;
     gyroErrRho = gyroErrRho / 200;
 
-    Serial.print("accErrAlpha=");
-    Serial.print(accErrAlpha);
-    Serial.print(" | accErrBeta");
-    Serial.print(accErrBeta);
-    Serial.print(" | gyroErrAlpha=");
-    Serial.print(gyroErrAlpha);
-    Serial.print(" | gyroErrBeta");
-    Serial.print(gyroErrBeta);
-    Serial.print(" | gyroErrRho=");
-    Serial.print(gyroErrRho);
-    Serial.println();
+}
 
+float tujuan (float alpha,int Xt,int Yt){
+
+    theta=(atan2((Yt-Ya),(Xt-Xa)))*180/3.14159;
+    sudut=theta-alpha;
+
+    return sudut;
+    
 }
